@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tambola Player</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; }
+        #setup, #game { 
+			transition: opacity 0.4s ease-in-out;
+			margin-top: 50px; 
+		}
+        .ticket {
+			display: grid;
+			grid-template-columns: repeat(9, 1fr);
+			gap: 4px;
+			padding: 10px;
+			border-radius: 8px;
+			border: 2px solid #444; /* Give the ticket a distinct border */
+			margin-top: 20px;
+			transition: background-color 0.3s ease; /* Makes the color change smooth */
+		}
+
+		/* The individual number boxes */
+		.cell {
+			background: rgba(255, 255, 255, 0.9); /* Slightly transparent white */
+			border: 1px solid #ccc;
+			aspect-ratio: 1;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-weight: bold;
+			cursor: pointer;
+			user-select: none; /* Prevents text highlighting on double-tap */
+		}
+
+		/* When a number is marked */
+		.cell.marked {
+			background: #2ecc71 !important; /* Green for marked */
+			color: white;
+			border-color: #27ae60;
+		}
+
+		/* Empty cells in the grid */
+		.cell.empty {
+			background: rgba(0, 0, 0, 0.05); /* Very faint to show the background color */
+			border: none;
+		}
+		
+		#color-picker button {
+			width: 45px;
+			height: 45px;
+			border-radius: 50%;
+			border: 3px solid #eee;
+			cursor: pointer;
+			transition: all 0.2s ease; /* Smoothly animate the size and border change */
+			outline: none;
+		}
+
+		#color-picker button:hover {
+			transform: scale(1.1);
+			border-color: #bbb;
+		}
+
+		/* This is the class we add via JavaScript */
+		#color-picker button.active {
+			border-color: #333 !important;
+			box-shadow: 0 0 10px rgba(0,0,0,0.2);
+		}
+		
+    </style>
+</head>
+<body>
+	<div id="setup">
+		<h1>Welcome to Tambola</h1>
+		<input type="text" id="name" placeholder="Your Name" style="padding: 10px;">
+
+		<div style="margin: 20px 0;">
+			<p>Pick your lucky ticket color:</p>
+			<div id="color-picker" style="display: flex; justify-content: center; gap: 15px;">
+				<button onclick="setSelectedColor('#add8e6', this)" style="background:#add8e6;"></button>
+				<button onclick="setSelectedColor('#90ee90', this)" style="background:#90ee90;"></button>
+				<button onclick="setSelectedColor('#d3d3d3', this)" style="background:#d3d3d3;"></button>
+			</div>
+		</div>
+
+		<button onclick="joinGame()" style="padding: 15px 30px; font-weight: bold;">Join Room</button>
+	</div>
+
+    <div id="game" style="display:none;">
+        <h2 id="welcome"></h2>
+        <h1 id="call">--</h1>
+        <div class="ticket" id="ticket"></div>
+		<div style="margin-top: 30px;">
+			<button id="claim-btn" onclick="claimPrize()" style="background:#f1c40f; color:#333; padding: 15px 40px; font-weight: bold; border-radius: 50px; border: none; cursor: pointer; box-shadow: 0 4px #d4ac0d;">
+			📢 CLAIM PRIZE!
+			</button>
+		</div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+			apiKey: "AIzaSyAk8h-RIkYCMzqVlUMloLNz7GrSRPu2rGw",
+			authDomain: "tambola-52363.firebaseapp.com",
+			databaseURL: "https://tambola-52363-default-rtdb.europe-west1.firebasedatabase.app",
+			projectId: "tambola-52363",
+			storageBucket: "tambola-52363.firebasestorage.app",
+			messagingSenderId: "36956217153",
+			appId: "1:36956217153:web:c7539cb599f01d88770bc0"
+		};
+		
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const gameRef = db.ref('games/party1');
+
+		//Checks are made to make sure that a player's name hasn't been used
+		async function joinGame() {
+			const nameInput = document.getElementById('name');
+			const name = nameInput.value.trim();
+			
+			if (!name) return alert("Please enter your name!");
+
+			// 1. Check if name already exists in Firebase
+			const snapshot = await gameRef.child('players').once('value');
+			const players = snapshot.val() || {};
+			
+			// Check if any player object has a matching name (case-insensitive)
+			const nameExists = Object.values(players).some(
+				p => p.name.toLowerCase() === name.toLowerCase()
+			);
+
+			if (nameExists) {
+				alert("This name is already taken! Please choose another one.");
+				nameInput.value = ""; // Clear input for them to try again
+				return; 
+			}
+
+			// 2. If name is unique, proceed to join
+			const pId = name.toLowerCase().replace(/\s+/g, '-') + "-" + Date.now();
+			await gameRef.child('players').child(pId).set({ 
+				name: name,
+				joinedAt: Date.now()
+			});
+
+			// 3. UI Changes
+			document.getElementById('setup').style.display = 'none';
+			document.getElementById('game').style.display = 'block';
+			document.getElementById('welcome').innerText = "Hello, " + name;
+			
+			if (typeof generateTicket === "function") {
+				generateTicket();
+			}
+		}
+
+        // Sync voice and called numbers
+        let currentCalledList = [];
+		let lastNum = null;
+        gameRef.on('value', snap => {
+			const val = snap.val() || {};
+			const newNumber = val.lastCalled;
+			
+			// UI Update for the current number
+			document.getElementById('call').innerText = newNumber || "--";
+			
+			// --- GHOST CLAIM PROTECTION START ---
+			const claimBtn = document.getElementById('claim-btn');
+			if (newNumber && newNumber > 0) {
+				// Show the button only once the game has started
+				claimBtn.style.display = 'inline-block';
+			} else {
+				// Hide the button if the game is reset or hasn't started
+				claimBtn.style.display = 'none';
+			}
+			// --- GHOST CLAIM PROTECTION END ---
+
+			// Sync the list for your ticket marking
+			currentCalledList = val.allCalled || [];
+
+			// Voice support
+			if(newNumber && newNumber !== lastNum) {
+				const msg = new SpeechSynthesisUtterance("Number " + newNumber);
+				window.speechSynthesis.speak(msg);
+				lastNum = newNumber;
+			}
+		});
+
+		// Add background colour to the ticket
+		let ticketColor = '#ffffff'; // Default to white
+
+		function setSelectedColor(color, element) {
+			ticketColor = color; // Saves the hex code for the ticket later
+
+			// 1. Remove the 'active' class from all color buttons
+			const allButtons = document.querySelectorAll('#color-picker button');
+			allButtons.forEach(btn => {
+				btn.classList.remove('active');
+				btn.style.borderColor = "#eee"; // Reset border to light grey
+				btn.style.transform = "scale(1)"; // Reset size
+			});
+
+			// 2. Add the 'active' look to the clicked button
+			element.classList.add('active');
+			element.style.borderColor = "#333"; // Dark border to show selection
+			element.style.transform = "scale(1.2)"; // Make it slightly bigger
+		}
+
+		// Generating Your Ticket
+		function generateTicket() {
+		const ticketDiv = document.getElementById('ticket');
+		ticketDiv.innerHTML = ''; // Clear old ticket
+		
+		// Apply the chosen background color
+		ticketDiv.style.backgroundColor = ticketColor;
+		ticketDiv.style.padding = "10px";
+		ticketDiv.style.borderRadius = "8px";
+		
+		// 1. Generate 15 unique numbers
+		let nums = [];
+		while(nums.length < 15) {
+			let r = Math.floor(Math.random() * 90) + 1;
+			if(!nums.includes(r)) nums.push(r);
+		}
+		nums.sort((a,b) => a - b);
+
+		// 2. Create the 3x9 layout
+		let grid = new Array(27).fill(null);
+		let positions = Array.from(Array(27).keys()).sort(() => 0.5 - Math.random()).slice(0, 15);
+		positions.forEach((p, i) => grid[p] = nums[i]);
+
+		// 3. Render cells
+		grid.forEach(n => {
+			let cell = document.createElement('div');
+			cell.className = n ? 'cell' : 'cell empty';
+			cell.innerText = n || '';
+			if(n) {
+				cell.onclick = () => {
+					// Check if the number was actually called before allowing mark
+					// if (currentCalledList.includes(n)) {
+						// no checks are performed
+						cell.classList.toggle('marked');
+					// } else {
+					//	alert("That number hasn't been called yet!");
+					// }
+				};
+			}
+			ticketDiv.appendChild(cell);
+		});
+		}
+		
+		// Claim prize fuction
+		function claimPrize() {
+			// Get the player name from the UI
+			const name = document.getElementById('welcome').innerText.replace("Hello, ", "");
+			
+			if(confirm("Ready to claim your prize?")) {
+				// This sends the claim to Firebase
+				gameRef.child('claims').push({
+					playerName: name,
+					time: new Date().toLocaleTimeString()
+				});
+				alert("Claim sent! Wait for the host to verify.");
+			}
+		}
+
+        </script>
+</body>
+</html>

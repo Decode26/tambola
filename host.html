@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tambola Host - Admin Panel</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #1a252f; color: white; padding: 20px; }
+        .container { max-width: 900px; margin: auto; }
+        
+        /* The Big Display */
+        #big-num { font-size: 140px; font-weight: bold; color: #f1c40f; text-shadow: 0 0 20px rgba(241, 196, 15, 0.4); margin: 10px 0; }
+        
+        /* Control Buttons */
+        .controls { margin: 20px 0; }
+        button { padding: 15px 40px; font-size: 20px; font-weight: bold; cursor: pointer; border: none; border-radius: 10px; transition: 0.2s; }
+        .btn-main { background: #27ae60; color: white; box-shadow: 0 4px #1e8449; }
+        .btn-main:active { box-shadow: 0 0 #1e8449; transform: translateY(4px); }
+        .btn-reset { background: #e74c3c; color: white; font-size: 14px; margin-left: 20px; }
+
+        /* The Board Grid */
+        .board { 
+            display: grid; 
+            grid-template-columns: repeat(10, 1fr); 
+            gap: 8px; 
+            margin-top: 30px; 
+            background: rgba(255,255,255,0.05); 
+            padding: 20px; 
+            border-radius: 15px; 
+        }
+        .num { 
+            aspect-ratio: 1; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            background: #34495e; 
+            border-radius: 5px; 
+            font-weight: bold; 
+            color: #95a5a6; 
+            font-size: 1.1rem;
+        }
+        .num.called { 
+            background: #f1c40f; 
+            color: #1a252f; 
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(241, 196, 15, 0.5);
+            z-index: 2;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>TAMBOLA HOST</h1>
+    <div id="big-num">--</div>
+    
+    <div class="controls">
+        <button class="btn-main" onclick="drawNumber()">DRAW NEXT NUMBER</button>
+        <button class="btn-reset" onclick="resetGame()">RESET</button>
+    </div>
+	<div id="claims-box" style="background: #c0392b; color: white; padding: 10px; margin-top: 20px; border-radius: 10px; display: none;">
+		<h3>🚨 RECENT CLAIMS:</h3>
+		<ul id="claims-list" style="list-style: none; padding: 0; font-size: 1.2rem;"></ul>
+	</div>
+	<div id="player-section" style="margin-top: 30px; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;">
+		<h3 style="color: #2ecc71;">Online Players: <span id="p-count">0</span></h3>
+		<div id="player-list" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;">
+			</div>
+	</div>
+    <h3 style="color: #bdc3c7;">Board History</h3>
+    <div class="board" id="board-container"></div>
+</div>
+
+<script>
+    // 1. CONFIGURATION (Paste your real keys here)
+    const firebaseConfig = {
+        apiKey: "AIzaSyAk8h-RIkYCMzqVlUMloLNz7GrSRPu2rGw",
+        authDomain: "tambola-52363.firebaseapp.com",
+        databaseURL: "https://tambola-52363-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "tambola-52363",
+        storageBucket: "tambola-52363.firebasestorage.app",
+        messagingSenderId: "36956217153",
+        appId: "1:36956217153:web:c7539cb599f01d88770bc0"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const gameRef = db.ref('games/party1');
+
+    // 2. GENERATE BOARD (Wrapped in window.onload)
+    window.onload = function() {
+        const board = document.getElementById('board-container');
+        for(let i = 1; i <= 90; i++) {
+            let div = document.createElement('div');
+            div.className = 'num';
+            div.id = `n-${i}`;
+            div.innerText = i;
+            board.appendChild(div);
+        }
+        console.log("Board generated.");
+    };
+
+    // 3. HOST ACTIONS
+    async function drawNumber() {
+        const snap = await gameRef.once('value');
+        const data = snap.val() || {};
+        const called = data.allCalled || [];
+
+        if(called.length >= 90) {
+            alert("Game Over! All numbers called.");
+            return;
+        }
+
+        let next;
+        do {
+            next = Math.floor(Math.random() * 90) + 1;
+        } while(called.includes(next));
+        
+        called.push(next);
+        gameRef.update({ 
+            lastCalled: next, 
+            allCalled: called 
+        });
+    }
+	
+	function resetGame() {
+		if(confirm("Reset everything, including the player list?")) {
+			gameRef.set({ 
+				lastCalled: 0, 
+				allCalled: [],
+				claims: {},
+				players: {} // This kicks everyone out for a fresh start
+			});
+			
+			// Hide the visual box on host screen
+			document.getElementById('claims-box').style.display = 'none';
+			document.getElementById('claims-list').innerHTML = '';
+		}
+	}
+	
+    // 4. SYNC BOARD WITH FIREBASE
+    gameRef.on('value', snap => {
+        const data = snap.val() || {};
+        const calledList = data.allCalled || [];
+        
+        // Update big display
+        document.getElementById('big-num').innerText = data.lastCalled || "--";
+        
+        // Update board colors
+        // First, clear all 'called' classes
+        document.querySelectorAll('.num').forEach(n => n.classList.remove('called'));
+        
+        // Then, add them back for numbers in the database
+        calledList.forEach(num => {
+            const el = document.getElementById(`n-${num}`);
+            if(el) el.classList.add('called');
+        });
+    });
+	
+	// Listen for all players in the room
+	gameRef.child('players').on('value', (snapshot) => {
+		const players = snapshot.val() || {};
+		const playerListDiv = document.getElementById('player-list');
+		const countSpan = document.getElementById('p-count');
+		
+		// Clear the current list
+		playerListDiv.innerHTML = '';
+		
+		const playerEntries = Object.values(players);
+		countSpan.innerText = playerEntries.length;
+
+		// Create a little badge/tag for each player
+		playerEntries.forEach(player => {
+			const badge = document.createElement('span');
+			badge.innerText = player.name;
+			badge.style.cssText = `
+				background: #3498db;
+				color: white;
+				padding: 5px 12px;
+				border-radius: 20px;
+				font-size: 0.9rem;
+				font-weight: bold;
+			`;
+			playerListDiv.appendChild(badge);
+		});
+	});
+	
+	// Claim prize function activated from player
+	gameRef.child('claims').on('child_added', (snapshot) => {
+		const claim = snapshot.val();
+		
+		// 1. Show the claims box
+		const box = document.getElementById('claims-box');
+		box.style.display = 'block';
+
+		// 2. Add the name to the list
+		const li = document.createElement('li');
+		li.innerHTML = `<strong>${claim.playerName}</strong> claimed at ${claim.time}`;
+		document.getElementById('claims-list').prepend(li); // Put newest at top
+
+		// 3. Try the alert again
+		alert("WINNER CLAIM: " + claim.playerName);
+		
+		const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+		audio.play();
+	});
+	
+</script>
+
+</body>
+</html>
