@@ -1,39 +1,75 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Tambola Player</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+	<title>Tambola Player</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; }
+        body { 
+			background-color: #000; /* Deep black background */
+			margin: 0;
+			display: flex;
+			justify-content: center;
+			align-items: flex-start; /* Start from top on mobile */
+			min-height: 100vh;
+			font-family: sans-serif;
+		}
         #setup, #game { 
-			transition: opacity 0.4s ease-in-out;
-			margin-top: 50px; 
+			background: #fff;
+			width: 95%;           /* Fills mobile width */
+			max-width: 400px;     /* Prevents huge size on Desktop */
+			margin-top: 20px;
+			padding: 20px;
+			border-radius: 15px;
+			box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+			box-sizing: border-box; /* Crucial for padding math */
+			text-align: center;
+		}
+		/* Fix the huge inputs and buttons */
+		input[type="text"], button {
+			width: 100%;          /* Full width of the 400px container */
+			max-width: 300px;     /* Limits them to a readable size */
+			padding: 12px;
+			margin: 10px auto;
+			display: block;       /* Centers them */
+			border-radius: 8px;
+			border: 1px solid #ccc;
+			font-size: 1rem;
+		}
+
+		button {
+			cursor: pointer;
+			background: #27ae60;
+			color: white;
+			border: none;
+			font-weight: bold;
 		}
         .ticket {
 			display: grid;
 			grid-template-columns: repeat(9, 1fr);
-			gap: 4px;
-			padding: 10px;
-			border-radius: 8px;
-			border: 2px solid #444; /* Give the ticket a distinct border */
+			gap: 3px;
+			background: #444;
+			padding: 5px;
 			margin-top: 20px;
-			transition: background-color 0.3s ease; /* Makes the color change smooth */
 		}
 
 		/* The individual number boxes */
 		.cell {
-			background: rgba(255, 255, 255, 0.9); /* Slightly transparent white */
-			border: 1px solid #ccc;
-			aspect-ratio: 1;
+			background: #fff;
+			aspect-ratio: 1;      /* Keeps it square */
 			display: flex;
 			align-items: center;
 			justify-content: center;
+			font-size: 0.9rem;
 			font-weight: bold;
-			cursor: pointer;
-			user-select: none; /* Prevents text highlighting on double-tap */
 		}
 
+		/* Bigger font for larger screens */
+		@media (min-width: 500px) {
+			.cell { font-size: 1.2rem; }
+		}
+		
 		/* When a number is marked */
 		.cell.marked {
 			background: #2ecc71 !important; /* Green for marked */
@@ -71,31 +107,37 @@
     </style>
 </head>
 <body>
+	<!-- Setup Screen -->
 	<div id="setup">
-		<h1>Welcome to Tambola</h1>
-		<input type="text" id="name" placeholder="Your Name" style="padding: 10px;">
+		<!-- <h1>Welcome to Tambola</h1> -->
+		<h2>Join Game</h2>
+		<input type="text" id="name" placeholder="Your Name">
 
-		<div style="margin: 20px 0;">
-			<p>Pick your lucky ticket color:</p>
-			<div id="color-picker" style="display: flex; justify-content: center; gap: 15px;">
-				<button onclick="setSelectedColor('#add8e6', this)" style="background:#add8e6;"></button>
-				<button onclick="setSelectedColor('#90ee90', this)" style="background:#90ee90;"></button>
-				<button onclick="setSelectedColor('#d3d3d3', this)" style="background:#d3d3d3;"></button>
-			</div>
+		<p>Pick your lucky ticket colour:</p>
+		<div id="color-picker" style="display: flex; justify-content: center; gap: 15px;">
+			<button onclick="setSelectedColor('#add8e6', this)" style="background:#add8e6;"></button>
+			<button onclick="setSelectedColor('#eec290', this)" style="background:#eec290;"></button>
+			<button onclick="setSelectedColor('#d3d3d3', this)" style="background:#d3d3d3;"></button>
 		</div>
-
-		<button onclick="joinGame()" style="padding: 15px 30px; font-weight: bold;">Join Room</button>
 	</div>
 
+	<button onclick="joinGame()">JOIN ROOM</button>
+	
+	</div>
+
+	<!-- Game Screen -->
     <div id="game" style="display:none;">
-        <h2 id="welcome"></h2>
-        <h1 id="call">--</h1>
-        <div class="ticket" id="ticket"></div>
-		<div style="margin-top: 30px;">
-			<button id="claim-btn" onclick="claimPrize()" style="background:#f1c40f; color:#333; padding: 15px 40px; font-weight: bold; border-radius: 50px; border: none; cursor: pointer; box-shadow: 0 4px #d4ac0d;">
-			📢 CLAIM PRIZE!
-			</button>
-		</div>
+        <h2 id="welcome" style="margin-top:0;"></h2>
+        <div style="background:#f8f9fa; padding:10px; border-radius:10px;">
+            <p style="margin:0; font-size:0.8rem; color:#666;">LAST CALLED</p>
+            <h1 id="call" style="margin:0; font-size:3rem; color:#e74c3c;">--</h1>
+        </div>
+        
+		<div id="ticket" class="ticket"></div>
+		
+		<button id="claim-btn" onclick="claimPrize()" style="display:none; width:100%; padding:15px; background:#f1c40f; border:none; font-weight:bold; border-radius:10px;">
+            📢 CLAIM PRIZE!
+        </button>
     </div>
 
     <script>
@@ -185,7 +227,7 @@
 		});
 
 		// Add background colour to the ticket
-		let ticketColor = '#ffffff'; // Default to white
+		let ticketColor = '#c4c2c3'; // Default to white
 
 		function setSelectedColor(color, element) {
 			ticketColor = color; // Saves the hex code for the ticket later
