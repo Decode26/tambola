@@ -1,309 +1,234 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-	<title>Tambola Player</title>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <title>Tambola Player</title>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
     <style>
-        body { 
-			background-color: #000; /* Deep black background */
-			margin: 0;
-			display: flex;
-			justify-content: center;
-			align-items: flex-start; /* Start from top on mobile */
-			min-height: 100vh;
-			font-family: sans-serif;
-		}
-        #setup, #game { 
-			background: #fff;
-			width: 95%;           /* Fills mobile width */
-			max-width: 400px;     /* Prevents huge size on Desktop */
-			margin-top: 20px;
-			padding: 20px;
-			border-radius: 15px;
-			box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-			box-sizing: border-box; /* Crucial for padding math */
-			text-align: center;
-		}
-		/* Fix the huge inputs and buttons */
-		input[type="text"], button {
-			width: 100%;          /* Full width of the 400px container */
-			max-width: 300px;     /* Limits them to a readable size */
-			padding: 12px;
-			margin: 10px auto;
-			display: block;       /* Centers them */
-			border-radius: 8px;
-			border: 1px solid #ccc;
-			font-size: 1rem;
-		}
+        /* 1. GLOBAL RESET & DARK BACKGROUND */
+        * { box-sizing: border-box; }
+        body {
+            background-color: #121212; /* Clean black/dark grey */
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
 
-		button {
-			cursor: pointer;
-			background: #27ae60;
-			color: white;
-			border: none;
-			font-weight: bold;
-		}
-        .ticket {
-			display: grid;
-			grid-template-columns: repeat(9, 1fr);
-			gap: 3px;
-			background: #444;
-			padding: 5px;
-			margin-top: 20px;
-		}
+        /* 2. THE MAIN "TABLE" CONTAINER (The Game Card) */
+        .app-container {
+            background: #ffffff;
+            width: 100%;
+            max-width: 450px; /* Limits width on desktop */
+            min-height: 100vh; /* Full height on mobile */
+            padding: 25px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            text-align: center;
+        }
 
-		/* The individual number boxes */
-		.cell {
-			background: #fff;
-			aspect-ratio: 1;      /* Keeps it square */
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-size: 0.9rem;
-			font-weight: bold;
-		}
+        @media (min-width: 500px) {
+            .app-container {
+                min-height: auto;
+                margin-top: 30px;
+                margin-bottom: 30px;
+                border-radius: 20px;
+            }
+        }
 
-		/* Bigger font for larger screens */
-		@media (min-width: 500px) {
-			.cell { font-size: 1.2rem; }
-		}
-		
-		/* When a number is marked */
-		.cell.marked {
-			background: #2ecc71 !important; /* Green for marked */
-			color: white;
-			border-color: #27ae60;
-		}
+        /* 3. SETUP SCREEN STYLES */
+        #setup h2 { color: #333; margin-bottom: 20px; }
+        .input-field {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
 
-		/* Empty cells in the grid */
-		.cell.empty {
-			background: rgba(0, 0, 0, 0.05); /* Very faint to show the background color */
-			border: none;
-		}
-		
-		#color-picker button {
-			width: 45px;
-			height: 45px;
-			border-radius: 50%;
-			border: 3px solid #eee;
-			cursor: pointer;
-			transition: all 0.2s ease; /* Smoothly animate the size and border change */
-			outline: none;
-		}
+        /* 4. COLOR PICKER CIRCLES */
+        .color-group { display: flex; justify-content: center; gap: 15px; margin: 20px 0; }
+        .color-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 4px solid #eee;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .color-btn.active { border-color: #333; transform: scale(1.1); }
 
-		#color-picker button:hover {
-			transform: scale(1.1);
-			border-color: #bbb;
-		}
+        /* 5. TICKET & GRID STYLES */
+        .ticket-wrapper {
+            background: #eee; /* Default */
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 4px;
+        }
+        .cell {
+            background: #fff;
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+        }
+        .cell.marked { background: #27ae60 !important; color: white; }
+        .cell.empty { background: rgba(0,0,0,0.05); border: none; }
 
-		/* This is the class we add via JavaScript */
-		#color-picker button.active {
-			border-color: #333 !important;
-			box-shadow: 0 0 10px rgba(0,0,0,0.2);
-		}
-		
+        /* 6. BUTTONS */
+        .primary-btn {
+            width: 100%;
+            padding: 15px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .claim-btn { background: #f1c40f; color: #333; margin-top: 20px; display: none; }
     </style>
 </head>
 <body>
-	<!-- Setup Screen -->
-	<div id="setup">
-		<!-- <h1>Welcome to Tambola</h1> -->
-		<h2>Join Game</h2>
-		<input type="text" id="name" placeholder="Your Name">
 
-		<p>Pick your lucky ticket colour:</p>
-		<div id="color-picker" style="display: flex; justify-content: center; gap: 15px;">
-			<button onclick="setSelectedColor('#add8e6', this)" style="background:#add8e6;"></button>
-			<button onclick="setSelectedColor('#eec290', this)" style="background:#eec290;"></button>
-			<button onclick="setSelectedColor('#d3d3d3', this)" style="background:#d3d3d3;"></button>
-		</div>
-	</div>
-
-	<button onclick="joinGame()">JOIN ROOM</button>
-	
-	</div>
-
-	<!-- Game Screen -->
-    <div id="game" style="display:none;">
-        <h2 id="welcome" style="margin-top:0;"></h2>
-        <div style="background:#f8f9fa; padding:10px; border-radius:10px;">
-            <p style="margin:0; font-size:0.8rem; color:#666;">LAST CALLED</p>
-            <h1 id="call" style="margin:0; font-size:3rem; color:#e74c3c;">--</h1>
-        </div>
+<div class="app-container">
+    <!-- SETUP VIEW -->
+    <div id="setup">
+        <h2>Enter Player Name</h2>
+        <input type="text" id="name" class="input-field" placeholder="Type your name...">
         
-		<div id="ticket" class="ticket"></div>
-		
-		<button id="claim-btn" onclick="claimPrize()" style="display:none; width:100%; padding:15px; background:#f1c40f; border:none; font-weight:bold; border-radius:10px;">
-            📢 CLAIM PRIZE!
-        </button>
+        <p>Pick Ticket Color:</p>
+        <div class="color-group">
+            <button class="color-btn" onclick="setChoice('#add8e6', this)" style="background:#add8e6;"></button>
+            <button class="color-btn" onclick="setChoice('#90ee90', this)" style="background:#90ee90;"></button>
+            <button class="color-btn" onclick="setChoice('#d3d3d3', this)" style="background:#d3d3d3;"></button>
+        </div>
+
+        <button class="primary-btn" onclick="joinGame()">JOIN ROOM</button>
     </div>
 
-    <script>
-        const firebaseConfig = {
-			apiKey: "AIzaSyAk8h-RIkYCMzqVlUMloLNz7GrSRPu2rGw",
-			authDomain: "tambola-52363.firebaseapp.com",
-			databaseURL: "https://tambola-52363-default-rtdb.europe-west1.firebasedatabase.app",
-			projectId: "tambola-52363",
-			storageBucket: "tambola-52363.firebasestorage.app",
-			messagingSenderId: "36956217153",
-			appId: "1:36956217153:web:c7539cb599f01d88770bc0"
-		};
-		
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        const gameRef = db.ref('games/party1');
+    <!-- GAME VIEW -->
+    <div id="game" style="display:none;">
+        <h3 id="welcome"></h3>
+        <div style="background:#f0f0f0; padding:15px; border-radius:10px;">
+            <small>CURRENT NUMBER</small>
+            <h1 id="call" style="font-size:3rem; margin:0;">--</h1>
+        </div>
 
-		//Checks are made to make sure that a player's name hasn't been used
-		async function joinGame() {
-			const nameInput = document.getElementById('name');
-			const name = nameInput.value.trim();
-			
-			if (!name) return alert("Please enter your name!");
+        <div id="ticket" class="ticket-wrapper"></div>
 
-			// 1. Check if name already exists in Firebase
-			const snapshot = await gameRef.child('players').once('value');
-			const players = snapshot.val() || {};
-			
-			// Check if any player object has a matching name (case-insensitive)
-			const nameExists = Object.values(players).some(
-				p => p.name.toLowerCase() === name.toLowerCase()
-			);
+        <button id="claim-btn" class="primary-btn claim-btn" onclick="claimPrize()">📢 CLAIM PRIZE!</button>
+    </div>
+</div>
 
-			if (nameExists) {
-				alert("This name is already taken! Please choose another one.");
-				nameInput.value = ""; // Clear input for them to try again
-				return; 
-			}
+<script>
+    // --- FIREBASE CONFIG ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyAk8h-RIkYCMzqVlUMloLNz7GrSRPu2rGw",
+		authDomain: "tambola-52363.firebaseapp.com",
+		databaseURL: "https://tambola-52363-default-rtdb.europe-west1.firebasedatabase.app",
+		projectId: "tambola-52363",
+		storageBucket: "tambola-52363.firebasestorage.app",
+		messagingSenderId: "36956217153",
+		appId: "1:36956217153:web:c7539cb599f01d88770bc0"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const gameRef = db.ref('games/party1'); // Make sure this matches your Host page
 
-			// 2. If name is unique, proceed to join
-			const pId = name.toLowerCase().replace(/\s+/g, '-') + "-" + Date.now();
-			await gameRef.child('players').child(pId).set({ 
-				name: name,
-				joinedAt: Date.now()
-			});
+    let ticketColor = '#eee';
+    let lastNum = 0;
 
-			// 3. UI Changes
-			document.getElementById('setup').style.display = 'none';
-			document.getElementById('game').style.display = 'block';
-			document.getElementById('welcome').innerText = "Hello, " + name;
-			
-			if (typeof generateTicket === "function") {
-				generateTicket();
-			}
-		}
+    // --- SELECTION LOGIC ---
+    function setChoice(color, el) {
+        ticketColor = color;
+        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+    }
 
-        // Sync voice and called numbers
-        let currentCalledList = [];
-		let lastNum = null;
-        gameRef.on('value', snap => {
-			const val = snap.val() || {};
-			const newNumber = val.lastCalled;
-			
-			// UI Update for the current number
-			document.getElementById('call').innerText = newNumber || "--";
-			
-			// --- GHOST CLAIM PROTECTION START ---
-			const claimBtn = document.getElementById('claim-btn');
-			if (newNumber && newNumber > 0) {
-				// Show the button only once the game has started
-				claimBtn.style.display = 'inline-block';
-			} else {
-				// Hide the button if the game is reset or hasn't started
-				claimBtn.style.display = 'none';
-			}
-			// --- GHOST CLAIM PROTECTION END ---
+    // --- JOIN LOGIC ---
+    async function joinGame() {
+        const name = document.getElementById('name').value.trim();
+        if(!name) return alert("Enter name!");
 
-			// Sync the list for your ticket marking
-			currentCalledList = val.allCalled || [];
+        // Duplicate Check
+        const snap = await gameRef.child('players').once('value');
+        const players = snap.val() || {};
+        if(Object.values(players).some(p => p.name.toLowerCase() === name.toLowerCase())) {
+            return alert("Name taken!");
+        }
 
-			// Voice support
-			if(newNumber && newNumber !== lastNum) {
-				const msg = new SpeechSynthesisUtterance("Number " + newNumber);
-				window.speechSynthesis.speak(msg);
-				lastNum = newNumber;
-			}
-		});
+        // Save Player
+        await gameRef.child('players').push({ name: name });
 
-		// Add background colour to the ticket
-		let ticketColor = '#c4c2c3'; // Default to white
+        // Switch UI
+        document.getElementById('setup').style.display = 'none';
+        document.getElementById('game').style.display = 'block';
+        document.getElementById('welcome').innerText = "Player: " + name;
 
-		function setSelectedColor(color, element) {
-			ticketColor = color; // Saves the hex code for the ticket later
+        generateTicket();
+    }
 
-			// 1. Remove the 'active' class from all color buttons
-			const allButtons = document.querySelectorAll('#color-picker button');
-			allButtons.forEach(btn => {
-				btn.classList.remove('active');
-				btn.style.borderColor = "#eee"; // Reset border to light grey
-				btn.style.transform = "scale(1)"; // Reset size
-			});
+    // --- TICKET GENERATION ---
+    function generateTicket() {
+        const ticketDiv = document.getElementById('ticket');
+        ticketDiv.style.backgroundColor = ticketColor;
+        
+        // Simple logic for testing: 15 random numbers
+        let nums = [];
+        while(nums.length < 15) {
+            let r = Math.floor(Math.random() * 90) + 1;
+            if(!nums.includes(r)) nums.push(r);
+        }
+        nums.sort((a,b) => a-b);
 
-			// 2. Add the 'active' look to the clicked button
-			element.classList.add('active');
-			element.style.borderColor = "#333"; // Dark border to show selection
-			element.style.transform = "scale(1.2)"; // Make it slightly bigger
-		}
+        // Fill 27 slots (3 rows of 9)
+        for(let i=0; i<27; i++) {
+            let cell = document.createElement('div');
+            cell.className = 'cell';
+            if(i % 2 === 0 && nums.length > 0) {
+                let n = nums.shift();
+                cell.innerText = n;
+                cell.onclick = () => cell.classList.toggle('marked');
+            } else {
+                cell.className += ' empty';
+            }
+            ticketDiv.appendChild(cell);
+        }
+    }
 
-		// Generating Your Ticket
-		function generateTicket() {
-		const ticketDiv = document.getElementById('ticket');
-		ticketDiv.innerHTML = ''; // Clear old ticket
-		
-		// Apply the chosen background color
-		ticketDiv.style.backgroundColor = ticketColor;
-		ticketDiv.style.padding = "10px";
-		ticketDiv.style.borderRadius = "8px";
-		
-		// 1. Generate 15 unique numbers
-		let nums = [];
-		while(nums.length < 15) {
-			let r = Math.floor(Math.random() * 90) + 1;
-			if(!nums.includes(r)) nums.push(r);
-		}
-		nums.sort((a,b) => a - b);
+    // --- LIVE SYNC ---
+    gameRef.on('value', snap => {
+        const data = snap.val() || {};
+        const num = data.lastCalled || "--";
+        document.getElementById('call').innerText = num;
+        
+        // Show claim button if game started
+        if(num !== "--") document.getElementById('claim-btn').style.display = 'block';
+    });
 
-		// 2. Create the 3x9 layout
-		let grid = new Array(27).fill(null);
-		let positions = Array.from(Array(27).keys()).sort(() => 0.5 - Math.random()).slice(0, 15);
-		positions.forEach((p, i) => grid[p] = nums[i]);
-
-		// 3. Render cells
-		grid.forEach(n => {
-			let cell = document.createElement('div');
-			cell.className = n ? 'cell' : 'cell empty';
-			cell.innerText = n || '';
-			if(n) {
-				cell.onclick = () => {
-					// Check if the number was actually called before allowing mark
-					// if (currentCalledList.includes(n)) {
-						// no checks are performed
-						cell.classList.toggle('marked');
-					// } else {
-					//	alert("That number hasn't been called yet!");
-					// }
-				};
-			}
-			ticketDiv.appendChild(cell);
-		});
-		}
-		
-		// Claim prize fuction
-		function claimPrize() {
-			// Get the player name from the UI
-			const name = document.getElementById('welcome').innerText.replace("Hello, ", "");
-			
-			if(confirm("Ready to claim your prize?")) {
-				// This sends the claim to Firebase
-				gameRef.child('claims').push({
-					playerName: name,
-					time: new Date().toLocaleTimeString()
-				});
-				alert("Claim sent! Wait for the host to verify.");
-			}
-		}
-
-        </script>
+    function claimPrize() {
+        const name = document.getElementById('name').value;
+        gameRef.child('claims').push({ name: name, time: new Date().toLocaleTimeString() });
+        alert("Claim sent!");
+    }
+</script>
 </body>
 </html>
