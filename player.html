@@ -214,32 +214,67 @@
     }
 
     // --- TICKET GENERATION ---
-    function generateTicket() {
-        const ticketDiv = document.getElementById('ticket');
-        ticketDiv.style.backgroundColor = ticketColor;
-        
-        // Simple logic for testing: 15 random numbers
-        let nums = [];
-        while(nums.length < 15) {
-            let r = Math.floor(Math.random() * 90) + 1;
-            if(!nums.includes(r)) nums.push(r);
-        }
-        nums.sort((a,b) => a-b);
+	function generateTicket() {
+		const ticketDiv = document.getElementById('ticket');
+		ticketDiv.innerHTML = ''; 
+		ticketDiv.style.backgroundColor = ticketColor;
 
-        // Fill 27 slots (3 rows of 9)
-        for(let i=0; i<27; i++) {
-            let cell = document.createElement('div');
-            cell.className = 'cell';
-            if(i % 2 === 0 && nums.length > 0) {
-                let n = nums.shift();
-                cell.innerText = n;
-                cell.onclick = () => cell.classList.toggle('marked');
-            } else {
-                cell.className += ' empty';
-            }
-            ticketDiv.appendChild(cell);
-        }
-    }
+		let grid = Array.from({ length: 3 }, () => Array(9).fill(0));
+
+		// 1. Distribute 5 numbers per row with clumping prevention
+		for (let r = 0; r < 3; r++) {
+			let count = 0;
+			let attempts = 0;
+			while (count < 5 && attempts < 100) {
+				let idx = Math.floor(Math.random() * 9);
+				
+				// Check if spot is empty AND it wouldn't create 3 numbers in a row
+				let createsTriple = (idx > 1 && grid[r][idx-1] !== 0 && grid[r][idx-2] !== 0) ||
+									(idx < 7 && grid[r][idx+1] !== 0 && grid[r][idx+2] !== 0) ||
+									(idx > 0 && idx < 8 && grid[r][idx-1] !== 0 && grid[r][idx+1] !== 0);
+
+				if (grid[r][idx] === 0 && !createsTriple) {
+					grid[r][idx] = 1;
+					count++;
+				}
+				attempts++;
+			}
+		}
+
+		// 2. Fill the columns (1-9, 10-19, etc.)
+		for (let c = 0; c < 9; c++) {
+			let min = c === 0 ? 1 : c * 10;
+			let max = c === 8 ? 90 : (c * 10) + 9;
+			
+			let neededRows = [];
+			for(let r=0; r<3; r++) if(grid[r][c] === 1) neededRows.push(r);
+			
+			let colNums = [];
+			while(colNums.length < neededRows.length) {
+				let num = Math.floor(Math.random() * (max - min + 1)) + min;
+				if(!colNums.includes(num)) colNums.push(num);
+			}
+			colNums.sort((a, b) => a - b); 
+
+			neededRows.forEach(r => {
+				grid[r][c] = colNums.shift();
+			});
+		}
+
+		// 3. Render grid to HTML
+		grid.forEach(row => {
+			row.forEach(val => {
+				let cell = document.createElement('div');
+				cell.className = val === 0 ? 'cell empty' : 'cell';
+				cell.innerText = val === 0 ? '' : val;
+				if (val !== 0) {
+					cell.onclick = () => cell.classList.toggle('marked');
+				}
+				ticketDiv.appendChild(cell);
+			});
+		});
+	}
+	
 
     // --- LIVE SYNC ---
     gameRef.on('value', snap => {
