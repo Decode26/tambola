@@ -150,6 +150,17 @@
 </div>
 
 <script>
+	// This will trigger the browser's default "Are you sure?" prompt on refresh/close
+		window.addEventListener('beforeunload', function (e) {
+			// Only show the prompt if the player has already joined the game
+			// (We don't want to annoy them if they are still on the setup screen)
+			if (document.getElementById('game').style.display === 'block') {
+				// Cancel the event
+				e.preventDefault();
+				// Chrome requires returnValue to be set
+				e.returnValue = '';
+			}
+		});
     // --- FIREBASE CONFIG ---
     const firebaseConfig = {
         apiKey: "AIzaSyAk8h-RIkYCMzqVlUMloLNz7GrSRPu2rGw",
@@ -187,7 +198,12 @@
         }
 
         // Save Player
-        await gameRef.child('players').push({ name: name });
+        //await gameRef.child('players').push({ name: name });
+		const pId = name.toLowerCase().replace(/\s+/g, '-') + "-" + Date.now();
+		await gameRef.child('players').child(pId).set({ 
+			name: name,
+			joinedAt: Date.now()
+		});
 
         // Switch UI
         document.getElementById('setup').style.display = 'none';
@@ -235,11 +251,23 @@
         if(num !== "--") document.getElementById('claim-btn').style.display = 'block';
     });
 
-    function claimPrize() {
-        const name = document.getElementById('name').value;
-        gameRef.child('claims').push({ name: name, time: new Date().toLocaleTimeString() });
-        alert("Claim sent!");
-    }
+	
+	// Claim prize fuction
+	function claimPrize() {
+			// Get the player name from the UI
+			const name = document.getElementById('welcome').innerText.replace("Hello, ", "");
+			
+			if(confirm("Ready to claim your prize?")) {
+				// This sends the claim to Firebase
+				gameRef.child('claims').push({
+					playerName: name,
+					time: new Date().toLocaleTimeString()
+				});
+				alert("Claim sent! Wait for the host to verify.");
+			}
+	}
+	
+
 </script>
 </body>
 </html>
