@@ -15,10 +15,9 @@
         html, body {
 			background-color: #000000 !important; /* Pure black */
 			margin: 0;
-			padding: 0;
+			padding: 15px; /* This creates the black border around the card on mobile */
 			width: 100%;
-			height: 100%;
-			/* This prevents mobile browsers from showing white when scrolling past edges */
+			height: 100%; /* This prevents mobile browsers from showing white when scrolling past edges */
 			overflow-x: hidden; 
 		}
 
@@ -27,6 +26,8 @@
 			display: flex;
 			justify-content: center;
 			align-items: flex-start; /* Keeps the card at the top */
+			min-height: 100vh;
+    		box-sizing: border-box;
 		}
 		
 		/* 2. THE MAIN "TABLE" CONTAINER (The Game Card) */
@@ -34,12 +35,12 @@
             background: #ffffff;
             width: 100%;
             max-width: 450px; /* Limits width on desktop */
-            min-height: 100vh; /* Full height on mobile */
+            min-height: auto; /* Full height on mobile */
             padding: 25px;
-            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
             text-align: center;
-			position: relative;
-    		z-index: 1;
+			border-radius: 15px; /* Gives rounded corners so the black shows at the edges */
+    		margin-bottom: 20px;
         }
 
 		/* Desktop Polish: centered card with black border around it */
