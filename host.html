@@ -59,10 +59,9 @@
         <button class="btn-main" onclick="drawNumber()">DRAW NEXT NUMBER</button>
         <button class="btn-reset" onclick="resetGame()">RESET</button>
     </div>
-	<div id="claims-box" style="background: #c0392b; color: white; padding: 10px; margin-top: 20px; border-radius: 10px; display: none;">
-		<h3>🚨 RECENT CLAIMS:</h3>
-		<ul id="claims-list" style="list-style: none; padding: 0; font-size: 1.2rem;"></ul>
-	</div>
+
+	
+
 	<div id="player-section" style="margin-top: 30px; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;">
 		<h3 style="color: #2ecc71;">Online Players: <span id="p-count">0</span></h3>
 		<div id="player-list" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;">
@@ -70,6 +69,12 @@
 	</div>
     <h3 style="color: #bdc3c7;">Board History</h3>
     <div class="board" id="board-container"></div>
+
+    <div id="claims-box" style="background: #c0392b; color: white; padding: 10px; margin-top: 20px; border-radius: 10px; display: none;">
+		<h3>🚨 RECENT CLAIMS Here:</h3>
+		<ul id="claims-list" style="list-style: none; padding: 0; font-size: 1.2rem;"></ul>
+	</div>
+
 </div>
 
 <script>
