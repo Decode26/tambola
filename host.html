@@ -49,14 +49,7 @@
             box-shadow: 0 0 15px rgba(241, 196, 15, 0.5);
             z-index: 2;
         }
-        .footer {
-            text-align: center;
-            font-size: 12px;
-            color: #888;
-            padding: 20px 0;
-            width: 100%;
-            font-family: sans-serif;
-        }
+
     </style>
 </head>
 <body>
@@ -84,6 +77,11 @@
 		<h3>🚨 RECENT Winners:</h3>
 		<ul id="claims-list" style="list-style: none; padding: 0; font-size: 1.2rem;"></ul>
 	</div>
+
+    <!-- Adding a footer-->
+    <div style="text-align: center; padding: 40px 0 20px 0; font-size: 10px; color: #aaa; clear: both;">
+        &copy; <span id="year"></span> - All rights reserved.
+    </div>
 
 </div>
 
@@ -238,11 +236,10 @@
 		audio.play();
 	});
 	
-</script>
+    // Returns the Year to the footer in Div
+    document.getElementById('year').textContent = new Date().getFullYear();
 
-    <footer class="footer">
-        &copy; 2026 All rights reserved.
-    </footer>
+</script>
 
 </body>
 </html>
