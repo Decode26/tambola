@@ -333,6 +333,7 @@
                         // --- Play Sound ---
                         const sound = document.getElementById('mark-sound');
                         if (sound) {
+                            sound.volume = 0.3; // Setting volume to 30 percent
                             sound.currentTime = 0; // Rewind to start so rapid clicks all play
                             sound.play().catch(() => {}); // Prevents errors if browser blocks sound
                         }
