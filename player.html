@@ -58,7 +58,7 @@
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
             text-align: center;
 			border-radius: 15px; /* Gives rounded corners so the black shows at the edges */
-    		margin-bottom: 20px;
+    		margin-bottom: 15px;
         }
 
 		/* Desktop Polish: centered card with black border around it */
@@ -101,10 +101,11 @@
             padding: 10px;
             border-radius: 10px;
             box-shadow: 0 8px 30px rgba(0,0,0,0.1);
-            margin-top: 20px;
+            margin-top: 15px;
             display: grid;
             grid-template-columns: repeat(9, 1fr);
             gap: 4px;
+            margin-bottom: 15px;
         }
         .cell {
             background: #fff;
@@ -140,6 +141,45 @@
         }
         .claim-btn { background: #f1c40f; color: #333; margin-top: 20px; display: none; }
 
+        .history-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+            margin-bottom: 15px;
+        }
+
+        .hist-slot {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border: 2px solid #ddd;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Added a little "bounce" */
+        }
+
+        .hist-slot.primary {
+            width: 50px;
+            height: 50px;
+            font-size: 1.5rem;
+            background-color: #27ae60;
+            color: white;
+            border-color: #1e8449;
+            box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3);
+            z-index: 2;
+        }
+
+        .hist-slot.secondary {
+            background-color: #f8f9fa;
+            color: #95a5a6;
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+
     </style>
 </head>
 <body>
@@ -165,10 +205,19 @@
         <h3 id="welcome"></h3>
         <div style="background:#f0f0f0; padding:15px; border-radius:10px;">
             <small>CURRENT NUMBER</small>
-            <h1 id="call" style="font-size:3rem; margin:0;">--</h1>
-        </div>
+            <h3 id="call" style="font-size:2rem; margin:0;">--</h3>
+       </div>
 
         <div id="ticket" class="ticket-wrapper"></div>
+
+        <div style="background:#f0f0f0; padding:15px; border-radius:10px;">
+            <div class="history-bar">
+                <small>PREVIOUS</small>
+                <div class="hist-slot secondary" id="hist-2">-</div>
+                <div class="hist-slot secondary" id="hist-1">-</div>
+                <div class="hist-slot primary" id="hist-0">-</div>
+            </div>
+        </div>
 
         <button id="claim-btn" class="primary-btn claim-btn" onclick="claimPrize()">📢 CLAIM PRIZE!</button>
     </div>
@@ -352,12 +401,32 @@
 
     // --- LIVE SYNC ---
     gameRef.on('value', snap => {
-        const data = snap.val() || {};
+        const data = snap.val();
         const num = data.lastCalled || "--";
         document.getElementById('call').innerText = num;
+        if (!data) return;
+
+        // 1. Handle the "History Bar"
+        if (data.allCalled) {
+            const called = data.allCalled;
+            
+            // Get last 3 numbers, newest first
+            const lastThree = [...called].slice(-4).reverse();
+
+            // Update the slots (hist-0 is the biggest/newest)
+            document.getElementById('hist-0').innerText = lastThree[1] || '-';
+            document.getElementById('hist-1').innerText = lastThree[2] || '-';
+            document.getElementById('hist-2').innerText = lastThree[3] || '-';
+        
         
         // Show claim button if game started
         if(num !== "--") document.getElementById('claim-btn').style.display = 'block';
+        }
+
+        // 2. Your existing logic for game state (e.g., checking for game over or reset)
+        if (data.gameState === 'waiting') {
+            // ... show pulse animation or reload ...
+        }
     });
 
 	
