@@ -159,6 +159,12 @@
 
         <button id="claim-btn" class="primary-btn claim-btn" onclick="claimPrize()">📢 CLAIM PRIZE!</button>
     </div>
+    
+    <!-- Adding a footer-->
+    <div style="text-align: center; padding: 40px 0 20px 0; font-size: 10px; color: #aaa; clear: both;">
+        &copy; <span id="year"></span> - All rights reserved.
+    </div>
+
 </div>
 
 <script>
@@ -345,7 +351,9 @@
 			}
 	}
 	
-
+    // Returns the Year to the footer in Div
+    document.getElementById('year').textContent = new Date().getFullYear();
+    
 </script>
 
 </body>
