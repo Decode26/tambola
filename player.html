@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no",shrink-to-fit=no">
-    <title>Tambola Party Player</title>
+    <title>Tambola Player</title>
     <link rel="icon" type="image/png" href="favicon.png">
 	
 	<!-- Apple Touch Icon for Mobile Home Screens -->
@@ -136,7 +136,7 @@
         <h2>Enter Player Name</h2>
         <input type="text" id="name" class="input-field" placeholder="Type your name...">
         
-        <p>Pick Ticket Color:</p>
+        <p>Pick Your Lucky Ticket Color:</p>
         <div class="color-group">
             <button class="color-btn" onclick="setChoice('#add8e6', this)" style="background:#add8e6;"></button>
             <button class="color-btn" onclick="setChoice('#90ee90', this)" style="background:#90ee90;"></button>
@@ -161,7 +161,8 @@
 </div>
 
 <script>
-	// This will trigger the browser's default "Are you sure?" prompt on refresh/close
+	// let isResetting = false;
+    // This will trigger the browser's default "Are you sure?" prompt on refresh/close
 		window.addEventListener('beforeunload', function (e) {
 			// Only show the prompt if the player has already joined the game
 			// (We don't want to annoy them if they are still on the setup screen)
@@ -186,6 +187,36 @@
     const db = firebase.database();
     const gameRef = db.ref('games/party1'); // Make sure this matches your Host page
 
+    // -- When the host presses reset the players page will also reset --//
+    let isResetting = false;
+
+    gameRef.child('gameState').on('value', (snapshot) => {
+        const data = snapshot.val();
+        
+        if (data && data.status === 'reset' && !isResetting) {
+            isResetting = true; 
+            
+            window.onbeforeunload = null;
+
+            // Cover the screen immediately to hide the "flicker"
+            document.body.innerHTML = `
+                <div style="background:black; position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; font-family:sans-serif; padding-top: 50px;">
+                    <h2 style="color:#f5f2f2; margin-bottom: 20px;">Starting New Game...</h2>
+                    <div class="spinner" style="border: 4px solid #f3f3f3; border-top: 4px solid #27ae60; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite;"></div>
+                </div>
+                <style>
+                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                </style>
+            `;
+
+            // Wait just a bit longer to ensure the Host has switched back to 'active'
+            setTimeout(() => {
+                window.location.replace(window.location.pathname);
+            }, 1500); // Increased to 1.5s for stability
+        }
+    });
+
+
     let ticketColor = '#eee';
     let lastNum = 0;
 
@@ -199,7 +230,7 @@
     // --- JOIN LOGIC ---
     async function joinGame() {
         const name = document.getElementById('name').value.trim();
-        if(!name) return alert("Enter name!");
+        if(!name) return alert("Please enter name!");
 
         // Duplicate Check
         const snap = await gameRef.child('players').once('value');
@@ -309,7 +340,7 @@
 					playerName: name,
 					time: new Date().toLocaleTimeString()
 				});
-				alert("Claim sent! Wait for the host to verify.");
+				alert("Claim sent! Wait for the host to verify the numbers.");
 			}
 	}
 	
