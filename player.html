@@ -196,6 +196,13 @@
             <button class="color-btn" onclick="setChoice('#d3d3d3', this)" style="background:#d3d3d3;"></button>
         </div>
 
+        <p>How many tickets do you want?</p>
+        <select id="ticket-count" class="input-field" style="background: #EDEDED; text-align-last: center;">
+            <option value="1">1 Ticket</option>
+            <option value="2">2 Tickets</option>
+        </select>
+
+
         <button class="primary-btn" onclick="joinGame()">JOIN ROOM</button>
     </div>
 
@@ -207,9 +214,11 @@
             <h3 id="call" style="font-size:2rem; margin:0;">--</h3>
        </div>
 
-        <div id="ticket" class="ticket-wrapper"></div>
+       <!-- <div id="ticket" class="ticket-wrapper"></div> -->
 
-        <div style="background:#f0f0f0; padding:15px; border-radius:10px;">
+       <div id="tickets-container"></div>
+
+       <div style="background:#f0f0f0; padding:15px; border-radius:10px;">
             <div class="history-bar">
                 <small>PREVIOUS</small>
                 <div class="hist-slot primary" id="hist-0">-</div>
@@ -323,79 +332,94 @@
     }
 
     // --- TICKET GENERATION ---
-	function generateTicket() {
-		const ticketDiv = document.getElementById('ticket');
-		ticketDiv.innerHTML = ''; 
-		ticketDiv.style.backgroundColor = ticketColor;
+	
+	// --- UPDATED TICKET GENERATION ---
+    function generateTicket() {
+        const container = document.getElementById('tickets-container');
+        container.innerHTML = ''; // Clean old tickets out
 
-		let grid = Array.from({ length: 3 }, () => Array(9).fill(0));
+        // Grab how many tickets the user requested (defaults to 1 if missing)
+        const countSelect = document.getElementById('ticket-count');
+        const ticketCount = countSelect ? parseInt(countSelect.value) : 1;
 
-		// 1. Distribute 5 numbers per row with clumping prevention
-		for (let r = 0; r < 3; r++) {
-			let count = 0;
-			let attempts = 0;
-			while (count < 5 && attempts < 100) {
-				let idx = Math.floor(Math.random() * 9);
-				
-				// Check if spot is empty AND it wouldn't create 3 numbers in a row
-				let createsTriple = (idx > 1 && grid[r][idx-1] !== 0 && grid[r][idx-2] !== 0) ||
-									(idx < 7 && grid[r][idx+1] !== 0 && grid[r][idx+2] !== 0) ||
-									(idx > 0 && idx < 8 && grid[r][idx-1] !== 0 && grid[r][idx+1] !== 0);
+        // Loop to generate each individual ticket card
+        for (let t = 0; t < ticketCount; t++) {
+            // Create a brand new grid element block for this ticket
+            let ticketDiv = document.createElement('div');
+            ticketDiv.className = 'ticket-wrapper';
+            ticketDiv.style.backgroundColor = ticketColor;
+            
+            // Give separate tickets a tiny gap if there are two on the screen
+            if (t > 0) ticketDiv.style.marginTop = '20px';
 
-				if (grid[r][idx] === 0 && !createsTriple) {
-					grid[r][idx] = 1;
-					count++;
-				}
-				attempts++;
-			}
-		}
+            let grid = Array.from({ length: 3 }, () => Array(9).fill(0));
 
-		// 2. Fill the columns (1-9, 10-19, etc.)
-		for (let c = 0; c < 9; c++) {
-			let min = c === 0 ? 1 : c * 10;
-			let max = c === 8 ? 90 : (c * 10) + 9;
-			
-			let neededRows = [];
-			for(let r=0; r<3; r++) if(grid[r][c] === 1) neededRows.push(r);
-			
-			let colNums = [];
-			while(colNums.length < neededRows.length) {
-				let num = Math.floor(Math.random() * (max - min + 1)) + min;
-				if(!colNums.includes(num)) colNums.push(num);
-			}
-			colNums.sort((a, b) => a - b); 
+            // 1. Distribute 5 numbers per row with clumping prevention
+            for (let r = 0; r < 3; r++) {
+                let count = 0;
+                let attempts = 0;
+                while (count < 5 && attempts < 100) {
+                    let idx = Math.floor(Math.random() * 9);
+                    
+                    let createsTriple = (idx > 1 && grid[r][idx-1] !== 0 && grid[r][idx-2] !== 0) ||
+                                        (idx < 7 && grid[r][idx+1] !== 0 && grid[r][idx+2] !== 0) ||
+                                        (idx > 0 && idx < 8 && grid[r][idx-1] !== 0 && grid[r][idx+1] !== 0);
 
-			neededRows.forEach(r => {
-				grid[r][c] = colNums.shift();
-			});
-		}
-
-		// 3. Render grid to HTML
-		grid.forEach(row => {
-			row.forEach(val => {
-				let cell = document.createElement('div');
-				cell.className = val === 0 ? 'cell empty' : 'cell';
-				cell.innerText = val === 0 ? '' : val;
-				if (val !== 0) {
-                    cell.onclick = () => {
-                        // --- Play Sound ---
-                        const sound = document.getElementById('mark-sound');
-                        if (sound) {
-                            sound.volume = 0.3; // Setting volume to 30 percent
-                            sound.currentTime = 0; // Rewind to start so rapid clicks all play
-                            sound.play().catch(() => {}); // Prevents errors if browser blocks sound
-                        }
-
-                        // --- Toggle Mark ---
-                        cell.classList.toggle('marked');
-                    };
+                    if (grid[r][idx] === 0 && !createsTriple) {
+                        grid[r][idx] = 1;
+                        count++;
+                    }
+                    attempts++;
                 }
-                
+            }
 
-				ticketDiv.appendChild(cell);
-			});
-		});
-	}
+            // 2. Fill the columns (1-9, 10-19, etc.)
+            for (let c = 0; c < 9; c++) {
+                let min = c === 0 ? 1 : c * 10;
+                let max = c === 8 ? 90 : (c * 10) + 9;
+                
+                let neededRows = [];
+                for(let r=0; r<3; r++) if(grid[r][c] === 1) neededRows.push(r);
+                
+                let colNums = [];
+                while(colNums.length < neededRows.length) {
+                    let num = Math.floor(Math.random() * (max - min + 1)) + min;
+                    if(!colNums.includes(num)) colNums.push(num);
+                }
+                colNums.sort((a, b) => a - b); 
+
+                neededRows.forEach(r => {
+                    grid[r][c] = colNums.shift();
+                });
+            }
+
+            // 3. Render grid elements to HTML
+            grid.forEach(row => {
+                row.forEach(val => {
+                    let cell = document.createElement('div');
+                    cell.className = val === 0 ? 'cell empty' : 'cell';
+                    cell.innerText = val === 0 ? '' : val;
+                    if (val !== 0) {
+                        cell.onclick = () => {
+                            // --- Play Sound ---
+                            const sound = document.getElementById('mark-sound');
+                            if (sound) {
+                                sound.volume = 0.3; 
+                                sound.currentTime = 0; 
+                                sound.play().catch(() => {}); 
+                            }
+                            // --- Toggle Mark ---
+                            cell.classList.toggle('marked');
+                        };
+                    }
+                    ticketDiv.appendChild(cell);
+                });
+            });
+
+            // Append this specific ticket structure inside the outer parent holder
+            container.appendChild(ticketDiv);
+        }
+    }
 	
 
     // --- LIVE SYNC ---
